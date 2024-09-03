@@ -184,6 +184,32 @@ function killWorkers() {
 	});
 }
 
+function handlePath(pidFilePath) {
+	console.log("EVELYN");
+	if (file.existsSync(pidFilePath)) {
+		let pid = 0;
+		try {
+			pid = fs.readFileSync(pidFilePath, { encoding: 'utf-8' });
+			if (pid) {
+				process.kill(pid, 0);
+				console.info(`Process "${pid}" from pidfile already running, exiting`);
+				process.exit();
+			} else {
+				console.info(`Invalid pid "${pid}" from pidfile, deleting pidfile`);
+				fs.unlinkSync(pidFilePath);
+			}
+		} catch (err) {
+			if (err.code === 'ESRCH') {
+				console.info(`Process "${pid}" from pidfile not found, deleting pidfile`);
+				fs.unlinkSync(pidFilePath);
+			} else {
+				console.error(err.stack);
+				throw err;
+			}
+		}
+	}
+}
+
 fs.open(pathToConfig, 'r', (err) => {
 	if (err) {
 		// No config detected, kickstart web installer
@@ -191,38 +217,17 @@ fs.open(pathToConfig, 'r', (err) => {
 		return;
 	}
 
-	if (nconf.get('daemon') !== 'false' && nconf.get('daemon') !== false) {
-		if (file.existsSync(pidFilePath)) {
-			let pid = 0;
-			try {
-				pid = fs.readFileSync(pidFilePath, { encoding: 'utf-8' });
-				if (pid) {
-					process.kill(pid, 0);
-					console.info(`Process "${pid}" from pidfile already running, exiting`);
-					process.exit();
-				} else {
-					console.info(`Invalid pid "${pid}" from pidfile, deleting pidfile`);
-					fs.unlinkSync(pidFilePath);
-				}
-			} catch (err) {
-				if (err.code === 'ESRCH') {
-					console.info(`Process "${pid}" from pidfile not found, deleting pidfile`);
-					fs.unlinkSync(pidFilePath);
-				} else {
-					console.error(err.stack);
-					throw err;
-				}
-			}
-		}
-
-		require('daemon')({
-			stdout: process.stdout,
-			stderr: process.stderr,
-			cwd: process.cwd(),
-		});
-
-		fs.writeFileSync(pidFilePath, String(process.pid));
+	if (nconf.get('daemon') === 'false') {
+		return;
 	}
+	handlePath(pidFilePath);
+	require('daemon')({
+		stdout: process.stdout,
+		stderr: process.stderr,
+		cwd: process.cwd(),
+	});
+
+	fs.writeFileSync(pidFilePath, String(process.pid));
 	try {
 		Loader.init();
 		Loader.displayStartupMessages();
