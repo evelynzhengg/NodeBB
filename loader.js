@@ -185,7 +185,7 @@ function killWorkers() {
 }
 
 function handlePath(pidFilePath) {
-	console.log("EVELYN");
+	console.log('EVELYN');
 	if (file.existsSync(pidFilePath)) {
 		let pid = 0;
 		try {
